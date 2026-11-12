@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="210" height="56" viewBox="0 0 210 56" role="img" aria-label="shurjoPay">
+  <!-- Original shurjoPay brand mark: rising-sun swirl + wordmark -->
+  <defs>
+    <linearGradient id="spG" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDB515"/>
+      <stop offset="100%" stop-color="#F58220"/>
+    </linearGradient>
+  </defs>
+  <circle cx="28" cy="28" r="21" fill="url(#spG)"/>
+  <path d="M28 10 C19 13 13 20 14 29 C15 38 23 45 32 44 C25 41 21 35 22 28 C23 20 28 15 36 14 C33 12 30 10 28 10 Z" fill="#FFFFFF" opacity="0.92"/>
+  <circle cx="36" cy="20" r="3.2" fill="#FFFFFF"/>
+  <text x="58" y="40" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="30" font-weight="800" fill="#1E7A45" letter-spacing="-0.5">shurjo</text>
+  <text x="158" y="40" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="30" font-weight="500" fill="#F58220">Pay</text>
+</svg>

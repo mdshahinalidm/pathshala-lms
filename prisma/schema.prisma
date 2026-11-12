@@ -1,0 +1,951 @@
+// PathShala LMS — Prisma Schema (SQLite)
+// Full LMS data model: Users, Courses, Chapters, Lessons, Enrollments,
+// Orders/Payments, Quizzes, Questions, Attempts, Notices, Suggestions,
+// Reviews, Notifications, OTP tokens, Contact messages.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ────────────────────────────── USERS & AUTH ──────────────────────────────
+
+model User {
+  id              String   @id @default(cuid())
+  name            String
+  email           String?  @unique
+  phone           String?  @unique
+  passwordHash    String
+  role            String   @default("STUDENT") // STUDENT | ADMIN | MANAGER (site manager)
+  avatarUrl       String?
+  studentClass    String? // CLASS_9 | CLASS_10 | CLASS_11 | CLASS_12 | HONOURS_1ST | HONOURS_2ND | HONOURS_3RD | HONOURS_4TH | OTHER
+  institution     String? // school / college name (profile completion field)
+  isVerified      Boolean  @default(false)
+  isBlocked       Boolean  @default(false)
+  activeSessionId String? // device limiting: only the latest login session stays valid
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  enrollments   Enrollment[]
+  orders        Order[]
+  quizAttempts  QuizAttempt[]
+  reviews       Review[]
+  notifications Notification[]
+  certificates  Certificate[]
+  purchases     SuggestionPurchase[]
+  examPurchases ExamPurchase[]
+  examAttempts  ExamAttempt[]
+  examEnrollments ExamEnrollment[]
+  examSubmissions ExamSubmission[]
+  comboPurchases ComboPurchase[]
+}
+
+model OtpToken {
+  id         String   @id @default(cuid())
+  identifier String // email or phone
+  code       String
+  expiresAt  DateTime
+  consumed   Boolean  @default(false)
+  attempts   Int      @default(0) // wrong-code attempts on this token (blocked after 5)
+  meta       String? // JSON payload for pending flows (e.g. phone-OTP registration data)
+  createdAt  DateTime @default(now())
+
+  @@index([identifier])
+}
+
+// ───────────────────────────── SUBJECTS ─────────────────────────────
+// Admin-managed subjects (Physics, Chemistry, …). Courses link to subjects
+// through the CourseSubject pivot (proper relational structure — never
+// comma-separated strings).
+
+model Subject {
+  id        String   @id @default(cuid())
+  name      String
+  nameEn    String?
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  courses CourseSubject[]
+  writtenExams WrittenExam[]
+}
+
+model CourseSubject {
+  courseId  String
+  subjectId String
+  course    Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@id([courseId, subjectId])
+}
+
+// ───────────────────────────── COURSE CATALOG ─────────────────────────────
+
+model Category {
+  id      String   @id @default(cuid())
+  name    String
+  nameEn  String?
+  slug    String   @unique
+  icon    String? // lucide icon name
+  order   Int      @default(0) // display order (Class 9 → Honours 4th Year)
+  createdAt DateTime @default(now()) // admin panel created-date display
+  courses Course[]
+  writtenExams WrittenExam[]
+}
+
+model Course {
+  id                 String          @id @default(cuid())
+  title              String
+  titleEn            String?
+  subtitle           String?
+  slug               String          @unique
+  description        String          @default("")
+  price              Float           @default(0)
+  discountPrice      Float?
+  thumbnail          String?
+  level              String          @default("BEGINNER") // BEGINNER | INTERMEDIATE | ADVANCED
+  language           String          @default("bn")
+  isPublished        Boolean         @default(true)
+  isFeatured         Boolean         @default(false)
+  benefits           String          @default("[]") // JSON array of strings (what you'll learn)
+  requirements       String          @default("[]") // JSON array of strings (prerequisites)
+  instructorId       String? // link to the Instructor section (admin → Instructors); snapshot fields below keep legacy display working
+  instructorName     String          @default("PathShala Team")
+  instructorTitle    String?
+  instructorBio      String?
+  instructorImage    String? // instructor avatar photo (demo /images/instructors/*.jpg)
+  subject            String? // subject label shown on cards, e.g. "পদার্থবিজ্ঞান"
+  // ── Course validity (access duration after enrollment) ──
+  isLifetime         Boolean         @default(false) // Lifetime Access — never expires
+  validityMonths     Int? // 1 | 2 | 3 | 6 | 12 … (null + !isLifetime = no expiry data → treat as lifetime for legacy rows)
+  subjects           CourseSubject[]
+  totalDurationMin   Int             @default(0)
+  pricingType        String          @default("ONE_TIME") // ONE_TIME | SUBSCRIPTION
+  subscriptionMonths Int? // for SUBSCRIPTION pricing (monthly fee = price)
+  dripEnabled        Boolean         @default(false) // sequential unlock: next lesson opens after previous completes
+  categoryId         String?
+  category           Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  instructor         Instructor?     @relation(fields: [instructorId], references: [id], onDelete: SetNull)
+  chapters           Chapter[]
+  enrollments        Enrollment[]
+  quizzes            Quiz[]
+  reviews            Review[]
+  orders             Order[]
+  liveClasses        LiveClass[]
+  certificates       Certificate[]
+  writtenExams       WrittenExam[]
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  @@index([categoryId])
+  @@index([instructorId])
+}
+
+// ───────────────────────────── INSTRUCTORS ────────────────────────────
+// Admin-managed teaching staff. Created in Admin → Instructors; they appear
+// on the public About page ("Our Team") and are selectable per course via
+// dropdown (courses keep a name/title/bio/photo snapshot for display).
+
+model Instructor {
+  id            String   @id @default(cuid())
+  name          String
+  nameEn        String?
+  designation   String   @default("") // e.g. "গণিত শিক্ষক"
+  designationEn String? // e.g. "Math Instructor"
+  bio           String? // short profile text (bn)
+  bioEn         String?
+  photoUrl      String? // uploaded via media library / direct upload
+  email         String?
+  phone         String?
+  isActive      Boolean  @default(true) // shown on the About page when active
+  order         Int      @default(0) // display order on About page
+  courses       Course[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Chapter {
+  id       String   @id @default(cuid())
+  title    String
+  order    Int      @default(0)
+  courseId String
+  course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons  Lesson[]
+
+  @@index([courseId])
+}
+
+// ─────────────────────────── MEDIA LIBRARY ───────────────────────────
+// Every file uploaded through /api/admin/upload gets a MediaAsset row so
+// the admin Media Library can list, search, re-use and delete all course
+// media (images / videos / PDFs / any file) with strong DB-backed tracking.
+
+model MediaAsset {
+  id             String   @id @default(cuid())
+  kind           String   @default("FILE") // IMAGE | VIDEO | PDF | FILE
+  url            String   @unique // public URL, e.g. /uploads/2026-01/ab12-video.mp4
+  filename       String // stored tail filename (sanitized)
+  originalName   String // original client filename
+  mime           String   @default("")
+  size           Int      @default(0) // bytes
+  title          String   @default("") // optional friendly label
+  createdByEmail String   @default("")
+  createdAt      DateTime @default(now())
+
+  @@index([kind])
+  @@index([createdAt])
+}
+
+model Lesson {
+  id        String  @id @default(cuid())
+  title     String
+  type      String  @default("VIDEO") // VIDEO | PDF | TEXT
+  videoUrl  String? // mp4 url / vimeo / bunny embed
+  content   String? // text content or pdf url
+  duration  Int? // seconds
+  isPreview Boolean @default(false)
+  order     Int     @default(0)
+  chapterId String
+  chapter   Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@index([chapterId])
+}
+
+// ─────────────────────── ENROLLMENTS & PAYMENTS ───────────────────────────
+
+model Enrollment {
+  id                 String    @id @default(cuid())
+  userId             String
+  courseId           String
+  progress           Int       @default(0) // 0..100
+  completedLessonIds String    @default("[]") // JSON array of lesson ids
+  enrolledAt         DateTime  @default(now())
+  expiresAt          DateTime? // computed from the course validity at enrollment (null = lifetime)
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([userId])
+}
+
+model Order {
+  id             String    @id @default(cuid())
+  userId         String
+  courseId       String
+  amount         Float // final payable (after discount)
+  listAmount     Float? // original price snapshot before discount
+  discount       Float     @default(0)
+  couponCode     String?
+  method         String // BKASH | NAGAD | SSLCOMMERZ | SHURJOPAY | ROCKET | STRIPE | MANUAL
+  status         String    @default("PENDING") // PENDING | SUCCESS | FAILED
+  trxId          String    @unique
+  invoiceNo      String? // e.g. PS-INV-2025-XXXX (assigned at creation for MANUAL; on SUCCESS otherwise)
+  // ── Manual payment review flow (invoice → student pays → submits → admin approves)
+  payStatus      String    @default("NONE") // NONE | SUBMITTED | APPROVED | REJECTED
+  senderNumber   String? // number the money was sent from
+  submittedTrxId String? // transaction id submitted by the student
+  submittedAt    DateTime?
+  adminNote      String? // admin remark on approve/reject
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  coupon Coupon? @relation(fields: [couponCode], references: [code], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status])
+  @@index([payStatus])
+}
+
+// ─────────────────────── PAYMENT GATEWAY SETUP ───────────────────────
+// Admin-configurable gateway registry. mode: LIVE (real API) | SANDBOX
+// (demo) | OFF. config holds the gateway's official API credentials as
+// JSON (never exposed to students — public API only returns names/instructions).
+
+model PaymentGateway {
+  id             String   @id @default(cuid())
+  code           String   @unique // BKASH | SSLCOMMERZ | ROCKET | MANUAL | CUSTOM_xxxxxx
+  name           String
+  mode           String   @default("OFF") // LIVE | SANDBOX | OFF
+  enabled        Boolean  @default(false)
+  isManual       Boolean  @default(false) // manual invoice flow (no live API)
+  isCustom       Boolean  @default(false) // admin-created custom gateway (generic live integration)
+  logoUrl        String? // uploaded logo for CUSTOM gateways (media library / upload)
+  config         String   @default("{}") // official API credentials (JSON, admin-only)
+  instructions   String   @default("") // manual payment instructions shown on checkout (bn)
+  instructionsEn String   @default("")
+  logoEmoji      String   @default("💳")
+  order          Int      @default(0)
+  createdAt      DateTime @default(now()) // admin panel created-date display
+  updatedAt      DateTime @updatedAt
+}
+
+model Coupon {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  type      String    @default("PERCENT") // PERCENT | FIXED
+  // Which purchase types this coupon applies to: "ALL" or a CSV of
+  // COURSE / EXAM / SUGGESTION (scope selection in admin panel).
+  scopes    String    @default("ALL")
+  value     Float // percent (0-100) or fixed BDT amount
+  minAmount Float     @default(0) // minimum order value to apply
+  maxUses   Int? // null = unlimited
+  usedCount Int       @default(0)
+  expiresAt DateTime?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+
+  orders Order[]
+}
+
+// ─────────────────────────── EXAM / QUIZ ENGINE ───────────────────────────
+
+model Quiz {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  type        String   @default("QUIZ") // QUIZ (course practice) | EXAM (live exam)
+  courseId    String?
+  durationMin Int      @default(10)
+  isPublished Boolean  @default(true)
+  imageUrl    String? // feature image (shown on public /exams cards)
+  // final exam engine: MCQ + CQ (written) paper kinds, purchasable
+  paperKind   String? // "MCQ" | "CQ" (creative/written) | null (practice)
+  level       String?
+  totalMarks  Int?
+  isFree      Boolean  @default(true)
+  price       Float?
+  createdAt   DateTime @default(now())
+
+  course    Course?       @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  questions Question[]
+  attempts  QuizAttempt[]
+  enrollments ExamEnrollment[]
+  subjects  QuizSubject[]
+  examPurchases ExamPurchase[]
+
+  @@index([courseId])
+}
+
+model Question {
+  id           String @id @default(cuid())
+  text         String
+  options      String // JSON string array (4 options)
+  correctIndex Int    @default(0) // 0..3
+  order        Int    @default(0)
+  quizId       String
+  quiz         Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@index([quizId])
+}
+
+model QuizAttempt {
+  id        String   @id @default(cuid())
+  userId    String
+  quizId    String
+  score     Int      @default(0)
+  total     Int      @default(0)
+  answers   String   @default("{}") // JSON {questionId: chosenIndex}
+  timeTaken Int      @default(0) // seconds
+  // final written-exam engine fields (CQ attempts)
+  startedAt    DateTime?
+  submittedAt  DateTime?
+  scriptStatus String? // IN_PROGRESS | SUBMITTED
+  scriptUrl    String?
+  scriptName   String?
+  subjectId    String?
+  totalMarks   Int?
+  isPublished Boolean @default(false) // MCQ result publish lifecycle
+  publishedAt DateTime?
+  grade     String?
+  gpa       Float?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  subject QuizSubject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  sheets QuizSheet[]
+
+  @@index([quizId])
+}
+
+// ─────────────────────── NOTICES, SUGGESTIONS, REVIEWS ────────────────────
+
+model Notice {
+  id        String   @id @default(cuid())
+  title     String
+  body      String   @default("")
+  type      String   @default("GENERAL") // URGENT | GENERAL | EVENT
+  // NOTE: Broadcast model (admin → class-targeted student notices) lives above.
+  isBanner  Boolean  @default(false) // show in home marquee
+  imageUrl  String?
+  pdfUrl    String? // attached PDF (viewer + download on the notice page)
+  pdfName   String? // original filename for the download button
+  createdAt DateTime @default(now())
+}
+
+model Suggestion {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  category    String   @default("GENERAL") // SSC | HSC | ADMISSION | JOB | GENERAL
+  isFree      Boolean  @default(true)
+  price       Float?
+  fileName    String?
+  fileType    String?
+  fileSize    Int?
+  fileData    String? // base64 payload (kept small) OR external url in fileUrl
+  fileUrl     String?
+  downloads   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  purchases SuggestionPurchase[]
+}
+
+// ─────────────────── SUGGESTION CATEGORIES ────────────────────
+// Admin-managed categories for suggestions (created in Admin →
+// সাজেশনস → ক্যাটাগরি). Suggestion.category stores the category `name`
+// (plain string, no FK) so existing rows/queries stay 100% compatible.
+
+model SuggestionCategory {
+  id          String   @id @default(cuid())
+  name        String   @unique // the value stored in Suggestion.category
+  nameBn      String? // optional Bangla display label
+  description String?
+  order       Int      @default(0) // display order
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([order])
+}
+
+// ─────────────────── PAID SUGGESTION PURCHASES ───────────────────
+// Mirrors the Order flow but for paid study materials: student buys at
+// checkout (sandbox gateways auto-confirm; MANUAL creates an invoice the
+// admin approves). A SUCCESS purchase unlocks /api/suggestions/[id]/download.
+
+model SuggestionPurchase {
+  id             String    @id @default(cuid())
+  userId         String
+  suggestionId   String
+  amount         Float
+  listAmount     Float? // price snapshot before coupon
+  discount       Float     @default(0) // coupon discount snapshot
+  couponCode     String? // applied coupon at purchase time
+  method         String // BKASH | NAGAD | ... | MANUAL
+  status         String    @default("PENDING") // PENDING | SUCCESS | FAILED
+  trxId          String    @unique
+  invoiceNo      String?
+  // ── Manual payment review (same lifecycle as orders) ──
+  payStatus      String    @default("NONE") // NONE | SUBMITTED | APPROVED | REJECTED
+  senderNumber   String?
+  submittedTrxId String?
+  submittedAt    DateTime?
+  adminNote      String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  suggestion Suggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([payStatus])
+}
+
+// ───────────────────────── BROADCASTS ────────────────────────
+// Admin → registered students announcements. targetClasses is a JSON array
+// of class keys ("[]" = every student); each targeted student also gets a
+// NOTICE notification row so it appears in their notification section.
+
+model Broadcast {
+  id             String   @id @default(cuid())
+  title          String
+  body           String
+  link           String?
+  targetClasses  String   @default("[]") // JSON array; empty = ALL students
+  recipientCount Int      @default(0)
+  createdByName  String?
+  createdAt      DateTime @default(now())
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  userName   String
+  userRole   String? // e.g. "SSC 2024 Candidate"
+  rating     Int      @default(5)
+  comment    String
+  userId     String?
+  courseId   String?
+  isApproved Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  course Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+}
+
+// Admin-curated landing-page testimonials — managed in the dedicated
+// Admin → টেস্টিমোনিয়াল page; rendered on the home "শিক্ষার্থীদের মতামত"
+// section while at least one row exists (else the section shows real reviews).
+model Testimonial {
+  id        String   @id @default(cuid())
+  name      String
+  role      String   @default("") // e.g. "এসএসসি পরীক্ষার্থী" (Bangla identity)
+  roleEn    String   @default("") // e.g. "SSC Candidate" (English identity)
+  rating    Int      @default(5)
+  comment   String
+  photoUrl  String?
+  order     Int      @default(0) // lower shows first
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ────────────────────────────── PLATFORM GLUE ─────────────────────────────
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  body      String   @default("")
+  type      String   @default("GENERAL") // GENERAL | COURSE | EXAM | NOTICE | PAYMENT
+  link      String? // optional in-app hash route e.g. #/dashboard/exams
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String?
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model SiteSetting {
+  id                String   @id @default("singleton")
+  brandName         String   @default("পাঠশালা")
+  brandNameEn       String   @default("PathShala")
+  tagline           String   @default("দেশসেরা শিক্ষকদের কোর্সে নিজেকে প্রস্তুত করুন")
+  taglineEn         String   @default("Learn from the best teachers of Bangladesh")
+  marqueeText       String   @default("")
+  supportPhone      String   @default("+880 1700-000000")
+  supportEmail      String   @default("support@pathshala.com")
+  address           String   @default("ঢাকা, বাংলাদেশ")
+  facebookUrl       String   @default("")
+  instagramUrl      String   @default("")
+  youtubeUrl        String   @default("")
+  linkedinUrl       String   @default("")
+  twitterUrl        String   @default("") // X / Twitter
+  tiktokUrl         String   @default("")
+  whatsappNumber    String   @default("")
+  whatsappEnabled   Boolean  @default(false)
+  whatsappMessage   String   @default("") // pre-filled chat message
+  bkashNumber       String   @default("")
+  nagadNumber       String   @default("")
+  // ── Email (SMTP) setup — credentials NEVER leave the server ──
+  smtpHost          String   @default("")
+  smtpPort          Int      @default(587)
+  smtpSecure        Boolean  @default(false) // true = 465 TLS, false = 587 STARTTLS
+  smtpUser          String   @default("")
+  smtpPass          String   @default("")
+  smtpFrom          String   @default("") // e.g. "PathShala <no-reply@pathshala.com>"
+  // ── SMS gateway setup (generic HTTP provider: SSLWireless / BulkSMSBD style) ──
+  smsApiUrl         String   @default("") // endpoint; {phone} {message} {token} {sender} placeholders supported
+  smsApiKey         String   @default("")
+  smsSenderId       String   @default("")
+  // ── Invoice ID format ──
+  invoicePrefix     String   @default("INV-PAY")
+  invoiceSeq        Int      @default(1) // next sequential number
+  invoicePad        Int      @default(3) // zero padding: INV-PAY-001
+  invoiceNote       String   @default("") // optional footer note printed on the invoice (VAT/terms)
+  // ── Global website popup (shown on first load when active) ──
+  popupActive       Boolean  @default(false)
+  popupTitle        String   @default("")
+  popupMessage      String   @default("")
+  popupImageUrl     String   @default("")
+  popupImageLink    String   @default("") // where the popup IMAGE navigates when clicked
+  popupButtonText   String   @default("")
+  popupButtonUrl    String   @default("")
+  // ── Footer copyright line (admin-editable; empty = default text) ──
+  footerCopyrightBn String   @default("")
+  footerCopyrightEn String   @default("")
+  // ── Home notice bar (marquee) master switch ──
+  noticeBarEnabled  Boolean  @default(true)
+  // ── Branding: logos & favicon — upload from Admin → Settings.
+  // Empty URL = default GraduationCap mark. Heights are display px (16..200);
+  // faviconSize feeds the icon metadata sizes (16..512).
+  headerLogoUrl     String   @default("")
+  headerLogoHeight  Int      @default(40)
+  footerLogoUrl     String   @default("")
+  footerLogoHeight  Int      @default(40)
+  loginLogoUrl      String   @default("")
+  loginLogoHeight   Int      @default(48)
+  faviconUrl        String   @default("")
+  faviconSize       Int      @default(64)
+  seoTitle          String   @default("") // overrides default meta title when set
+  seoDescription    String   @default("")
+  seoKeywords       String   @default("") // comma separated
+  // ── Home hero variant picker: 'classic' = 1st hero, 'circular' = 2nd hero (coverflow) ──
+  heroVariant       String   @default("classic")
+  // ── Home & About stat-strip overrides — nullable: NULL = auto
+  // (students/hours keep their marketing defaults, courses/reviews show the
+  // real DB counts). Admin → Settings → স্ট্যাটস edits these.
+  statStudents      Int?
+  statCourses       Int?
+  statHours         Int?
+  statReviews       Int?
+  // ── Preloader customization — blank text = default, blank logo = default icon ──
+  preloaderEnabled  Boolean  @default(true)
+  preloaderText     String   @default("")
+  preloaderLogoUrl  String   @default("")
+  // ── SEO verification & analytics — search-console meta tags + GA4 ──
+  googleSiteVerification String @default("") // <meta name="google-site-verification">
+  bingSiteVerification   String @default("") // <meta name="msvalidate.01">
+  gaMeasurementId        String @default("") // GA4 measurement id, e.g. G-XXXXXXX
+  // ── Login / registration option toggles — admin on/off switches
+  // that show/hide the OTP options on the public login & register pages ──
+  otpLoginEnabled    Boolean  @default(true)  // "OTP দিয়ে লগইন" (passwordless login)
+  otpRegisterEnabled Boolean  @default(false) // "ফোন OTP দিয়ে অ্যাকাউন্ট খুলুন" (passwordless)
+  // ── Footer full customization — JSON blob (nav-config.ts shape);
+  // empty string = the built-in defaults render exactly as before ──
+  footerConfig       String   @default("")
+  // ── Header menu customization — JSON blob; empty = built-in NAV ──
+  headerMenuConfig   String   @default("")
+  // ── Custom CSS & custom code — raw admin-authored snippets.
+  // customCss renders as a <style> block on every page; customCode is raw
+  // HTML/JS injected at the end of <body> (pixels, widgets, tracking…).
+  // Empty string = nothing is injected (site renders exactly as before).
+  customCss          String   @default("")
+  customCode         String   @default("")
+  updatedAt          DateTime @updatedAt
+}
+
+model LiveClass {
+  id          String   @id @default(cuid())
+  title       String
+  provider    String   @default("ZOOM") // ZOOM | MEET | CUSTOM
+  joinUrl     String
+  scheduledAt DateTime
+  durationMin Int      @default(60)
+  notes       String?
+  courseId    String?
+  course      Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([scheduledAt])
+  @@index([courseId])
+}
+
+// Completion certificate — auto-issued once per user+course at 100% progress.
+model Certificate {
+  id          String   @id @default(cuid())
+  serial      String   @unique // public verification code, e.g. PS-CERT-8F3K2M
+  userId      String
+  courseId    String
+  studentName String
+  courseTitle String
+  issuedAt    DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+}
+
+// ═══════════════════════ WRITTEN / THEORY EXAMS ══════════════════════
+// Descriptive written exams (NO MCQ): admin uploads question PDF/images,
+// student purchases → starts (server-authoritative timer) → writes the
+// answer on paper → uploads answer-sheet IMAGES → submits. Admin reviews,
+// annotates (non-destructive overlay), marks, publishes. Original uploaded
+// images are NEVER modified — annotations live in separate fields.
+
+model WrittenExam {
+  id              String   @id @default(cuid())
+  title           String
+  description     String   @default("")
+  instructions    String   @default("")
+  // Course → Category → Subject hierarchy (same pattern as courses)
+  courseId        String?
+  categoryName    String? // snapshot of Category.name (plain string like courses)
+  subjectId       String?
+  subjectName     String? // snapshot of Subject.name (always English)
+  // proper Category/Subject relations (same pattern as courses)
+  categoryId      String?
+  category        Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  subject         Subject?  @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  publishAt       DateTime? // scheduled visibility (examVisibleNow)
+  durationMin     Int      @default(60)
+  totalMarks      Int      @default(100)
+  isFree          Boolean  @default(true)
+  price           Float?
+  isPublished     Boolean  @default(false)
+  // Question media (PDF and/or images, uploaded via /api/admin/upload)
+  questionPdfUrl  String?
+  questionPdfName String?
+  questionImages  String   @default("[]") // JSON [{url,name,size,mime}]
+  imageUrl        String? // feature image (shown on public /exams cards)
+  createdByEmail  String? // final: admin who created the exam
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  course    Course?        @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  purchases ExamPurchase[]
+  attempts  ExamAttempt[]
+  enrollments ExamEnrollment[]
+  submissions ExamSubmission[]
+
+  @@index([courseId])
+  @@index([isPublished])
+}
+
+model ExamPurchase {
+  id             String    @id @default(cuid())
+  userId         String
+  examId         String?
+  quizId         String? // final: paid MCQ/CQ exams (Quiz-based)
+  amount         Float
+  listAmount     Float? // price snapshot before coupon
+  discount       Float     @default(0) // coupon discount snapshot
+  couponCode     String? // applied coupon at purchase time
+  method         String // BKASH | NAGAD | ... | MANUAL
+  status         String    @default("PENDING") // PENDING | SUCCESS | FAILED
+  trxId          String    @unique
+  invoiceNo      String?
+  expiresAt      DateTime?
+  // Manual payment review (same lifecycle as orders/suggestions)
+  payStatus      String    @default("NONE") // NONE | SUBMITTED | APPROVED | REJECTED
+  senderNumber   String?
+  submittedTrxId String?
+  submittedAt    DateTime?
+  adminNote      String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exam     WrittenExam?  @relation(fields: [examId], references: [id], onDelete: Cascade)
+  quiz     Quiz?         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  attempts ExamAttempt[]
+
+  @@unique([userId, examId])
+  @@index([userId])
+  @@index([examId])
+  @@index([status])
+  @@index([payStatus])
+}
+
+model ExamAttempt {
+  id            String    @id @default(cuid())
+  userId        String
+  examId        String
+  purchaseId    String?
+  status        String    @default("IN_PROGRESS") // IN_PROGRESS | SUBMITTED | MARKED | PUBLISHED | EXPIRED
+  startedAt     DateTime  @default(now()) // server clock — the ONLY timer source
+  endsAt        DateTime  @default(now()) // final: server-owned deadline (startedAt + durationMin)
+  deadlineAt    DateTime @default(now()) // legacy field (old attempt flow); superseded by endsAt
+  submittedAt   DateTime?
+  expired       Boolean   @default(false) // auto-locked after deadline
+  isAutoSubmitted Boolean @default(false) // lazily auto-finalized by exam-helpers
+  // Marking (admin)
+  totalMarks    Int       @default(0) // snapshot of exam.totalMarks
+  obtainedMarks Int?
+  percentage    Float?
+  grade         String?
+  feedback      String?
+  markedAt      DateTime?
+  publishedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exam     WrittenExam       @relation(fields: [examId], references: [id], onDelete: Cascade)
+  purchase ExamPurchase?     @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  images   ExamAnswerImage[]
+  submission ExamSubmission?
+
+  @@unique([userId, examId])
+  @@index([examId])
+  @@index([status])
+}
+
+// an exam reaches a student's dashboard ONLY by explicit action —
+// clicking a FREE exam on /exams (source=FREE_CLICK). Paid exams enter via a
+// SUCCESS ExamPurchase (no row needed here; dashboard query unions purchases).
+model ExamEnrollment {
+  id        String   @id @default(cuid())
+  userId    String
+  quizId    String? // MCQ exam (Quiz, type=EXAM)
+  examId    String? // Written exam (WrittenExam)
+  source    String   @default("FREE_CLICK") // FREE_CLICK
+  createdAt DateTime @default(now())
+
+  user User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz Quiz?          @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  exam WrittenExam?   @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, quizId])
+  @@unique([userId, examId])
+  @@index([userId])
+}
+
+// one submission per attempt (created on manual submit or
+// lazy auto-finalize). Carries the admin marking/publish lifecycle.
+model ExamSubmission {
+  id            String    @id @default(cuid())
+  attemptId     String    @unique
+  userId        String
+  examId        String
+  courseId      String?
+  categoryId    String?
+  subjectId     String?
+  submittedAt   DateTime
+  reviewStatus  String    @default("SUBMITTED") // SUBMITTED | UNDER_REVIEW | MARKED | PUBLISHED
+  obtainedMarks Int?
+  feedback      String?
+  markedAt      DateTime?
+  markedByEmail String?
+  publishedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  attempt ExamAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exam    WrittenExam  @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([examId])
+  @@index([reviewStatus])
+}
+
+model ExamAnswerImage {
+  id             String    @id @default(cuid())
+  attemptId      String
+  order          Int       @default(0)
+  url            String // /uploads/... path (original, NEVER overwritten)
+  fileName       String?
+  mimeType       String?
+  fileSize       Int?
+  // Non-destructive annotation layer (admin marking)
+  annotationData String? // JSON stroke list (undo/redo source of truth)
+  annotatedUrl   String? // flattened PNG (original + annotations), saved separately
+  annotatedAt    DateTime?
+  strokes        String? // final: annotation stroke JSON (exam-submissions PATCH)
+  annotatedBy    String? // admin email who last annotated
+  // new-system upload fields
+  originalName   String?
+  mime           String?
+  size           Int?
+  createdAt      DateTime  @default(now())
+
+  attempt ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@index([attemptId])
+}
+
+// per-subject slots inside a CQ exam batch
+model QuizSubject {
+  id          String   @id @default(cuid())
+  quizId      String
+  name        String?
+  durationMin Int      @default(60)
+  totalMarks  Int?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  quiz     Quiz          @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  attempts QuizAttempt[]
+
+  @@index([quizId])
+}
+
+// answer-sheet photos uploaded for a CQ attempt
+model QuizSheet {
+  id        String   @id @default(cuid())
+  attemptId String
+  imageUrl  String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  attempt QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@index([attemptId])
+}
+
+// ═══════════════════════ COMBO OFFERS ══════════════════════
+// Admin-created bundles: several courses / exams / suggestions sold
+// together at one discounted price. When a combo purchase reaches SUCCESS,
+// every item is granted instantly (enrollment for courses, SUCCESS purchase
+// rows for exams and suggestions) so the whole bundle appears in the
+// student's dashboard at once. Items reference by id + keep a title
+// snapshot, so deleting the underlying course/exam/suggestion never breaks
+// historical combo display (the item just renders as unavailable).
+
+model Combo {
+  id          String   @id @default(cuid())
+  title       String
+  description String   @default("")
+  price       Float // discounted single price for the whole bundle (BDT)
+  imageUrl    String? // optional feature image (media library)
+  isActive    Boolean  @default(true) // inactive combos are hidden from students
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items     ComboItem[]
+  purchases ComboPurchase[]
+}
+
+model ComboItem {
+  id            String @id @default(cuid())
+  comboId       String
+  itemType      String // COURSE | EXAM | SUGGESTION
+  refId         String // Course.id | WrittenExam.id | Suggestion.id
+  titleSnapshot String // display-safe title snapshot
+  order         Int    @default(0)
+
+  combo Combo @relation(fields: [comboId], references: [id], onDelete: Cascade)
+
+  @@index([comboId])
+}
+
+model ComboPurchase {
+  id         String    @id @default(cuid())
+  userId     String
+  comboId    String
+  amount     Float // final payable (after coupon)
+  listAmount Float // combo price snapshot before coupon
+  discount   Float     @default(0)
+  couponCode String?
+  method     String // BKASH | NAGAD | ... | MANUAL
+  status     String    @default("PENDING") // PENDING | SUCCESS | FAILED
+  trxId      String    @unique
+  invoiceNo  String?
+  // Manual payment review (same lifecycle as orders/suggestions/exams)
+  payStatus      String    @default("NONE") // NONE | SUBMITTED | APPROVED | REJECTED
+  senderNumber   String?
+  submittedTrxId String?
+  submittedAt    DateTime?
+  adminNote      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  combo Combo @relation(fields: [comboId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([comboId])
+  @@index([status])
+  @@index([payStatus])
+}

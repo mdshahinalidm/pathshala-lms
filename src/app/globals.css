@@ -1,0 +1,333 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: "Noto Sans Bengali", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: "Baloo Da 2", "Noto Sans Bengali", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --radius: 0.75rem;
+  --background: oklch(0.985 0.005 120);
+  --foreground: oklch(0.17 0.02 170);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.17 0.02 170);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.17 0.02 170);
+  --primary: oklch(0.55 0.135 165); /* emerald-700 */
+  --primary-foreground: oklch(0.985 0.01 150);
+  --secondary: oklch(0.955 0.02 150);
+  --secondary-foreground: oklch(0.3 0.05 165);
+  --muted: oklch(0.955 0.01 140);
+  --muted-foreground: oklch(0.5 0.02 160);
+  --accent: oklch(0.94 0.04 105); /* soft lime/amber tint */
+  --accent-foreground: oklch(0.3 0.06 110);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.9 0.015 150);
+  --input: oklch(0.9 0.015 150);
+  --ring: oklch(0.6 0.12 163);
+  --chart-1: oklch(0.62 0.14 163);
+  --chart-2: oklch(0.78 0.15 80);  /* amber */
+  --chart-3: oklch(0.72 0.13 190); /* teal */
+  --chart-4: oklch(0.66 0.16 45);  /* orange */
+  --chart-5: oklch(0.75 0.14 130); /* lime */
+  --sidebar: oklch(0.97 0.015 155);
+  --sidebar-foreground: oklch(0.25 0.03 168);
+  --sidebar-primary: oklch(0.55 0.135 165);
+  --sidebar-primary-foreground: oklch(0.985 0.01 150);
+  --sidebar-accent: oklch(0.93 0.03 155);
+  --sidebar-accent-foreground: oklch(0.3 0.05 165);
+  --sidebar-border: oklch(0.9 0.015 150);
+  --sidebar-ring: oklch(0.6 0.12 163);
+}
+
+.dark {
+  --background: oklch(0.16 0.015 170);
+  --foreground: oklch(0.96 0.005 150);
+  --card: oklch(0.205 0.02 170);
+  --card-foreground: oklch(0.96 0.005 150);
+  --popover: oklch(0.205 0.02 170);
+  --popover-foreground: oklch(0.96 0.005 150);
+  --primary: oklch(0.72 0.14 163); /* emerald-400 */
+  --primary-foreground: oklch(0.16 0.04 168);
+  --secondary: oklch(0.26 0.025 168);
+  --secondary-foreground: oklch(0.96 0.005 150);
+  --muted: oklch(0.26 0.02 168);
+  --muted-foreground: oklch(0.68 0.02 158);
+  --accent: oklch(0.3 0.04 120);
+  --accent-foreground: oklch(0.93 0.05 110);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.66 0.12 163);
+  --chart-1: oklch(0.7 0.14 163);
+  --chart-2: oklch(0.8 0.14 85);
+  --chart-3: oklch(0.75 0.12 190);
+  --chart-4: oklch(0.7 0.15 45);
+  --chart-5: oklch(0.78 0.13 130);
+  --sidebar: oklch(0.185 0.02 170);
+  --sidebar-foreground: oklch(0.93 0.01 150);
+  --sidebar-primary: oklch(0.72 0.14 163);
+  --sidebar-primary-foreground: oklch(0.16 0.04 168);
+  --sidebar-accent: oklch(0.27 0.025 168);
+  --sidebar-accent-foreground: oklch(0.95 0.01 150);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.66 0.12 163);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    scroll-behavior: smooth;
+    /* Crisper Bangla shaping + numerals */
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "kern" 1, "liga" 1;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Noto Sans Bengali", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    /* Site-wide side frame: the WHOLE site (header bar, every page, footer)
+       sits 12px in from the viewport edges on both sides — visible left/right
+       space on 100% of pages. Fixed overlays (dialogs/sheets/toasts) are
+       viewport-positioned and unaffected. */
+    padding-inline: 12px;
+  }
+  /* Beautiful rounded display face for headings & brand (both bn/en) */
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: "Baloo Da 2", "Noto Sans Bengali", ui-sans-serif, system-ui, sans-serif;
+  }
+  /* Legal pages (privacy/terms) — scoped to the article only so no other
+     page is affected (CSS isolation per spec). */
+  .prose-legal h2 {
+    @apply text-lg font-bold text-foreground;
+  }
+  .prose-legal p {
+    @apply text-[15px] leading-relaxed text-muted-foreground;
+  }
+}
+
+/* ── Custom scrollbar ── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(0.6 0.1 163 / 0.35);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.55 0.12 163 / 0.6);
+}
+
+/* ── Notice marquee animation ── */
+@keyframes marquee-x {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+.animate-marquee {
+  animation: marquee-x 40s linear infinite;
+}
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* ── Watermark drift for classroom anti-piracy overlay ── */
+@keyframes watermark-drift {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-18%, 8%);
+  }
+  50% {
+    transform: translate(-6%, -6%);
+  }
+  75% {
+    transform: translate(-22%, -2%);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+.watermark-drift {
+  animation: watermark-drift 22s ease-in-out infinite;
+}
+
+/* Video protections */
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Subtle dotted background for hero */
+.hero-dots {
+  background-image: radial-gradient(oklch(0.55 0.135 165 / 0.12) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   COLORFUL 2.0 — multi-hue gradient design system
+   emerald·teal·lime (brand) + violet·fuchsia·amber·rose·cyan
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Brand gradient (buttons, active pills, marquee) */
+.grad-brand {
+  background-image: linear-gradient(120deg, #059669, #0d9488 45%, #65a30d);
+}
+/* Festive multi-stop gradient (CTA banners, hero headline) */
+.grad-festive {
+  background-image: linear-gradient(
+    120deg,
+    #10b981,
+    #14b8a6 25%,
+    #8b5cf6 55%,
+    #ec4899 78%,
+    #f59e0b
+  );
+}
+/* Thin rainbow strip (top of header, section accents) */
+.rainbow-bar {
+  background-image: linear-gradient(
+    90deg,
+    #10b981,
+    #84cc16 16%,
+    #f59e0b 36%,
+    #f43f5e 56%,
+    #d946ef 76%,
+    #06b6d4
+  );
+}
+/* Per-tone gradients (stat cards, feature icons, avatars) */
+.grad-emerald { background-image: linear-gradient(135deg, #10b981, #0d9488); }
+.grad-violet  { background-image: linear-gradient(135deg, #8b5cf6, #d946ef); }
+.grad-amber   { background-image: linear-gradient(135deg, #f59e0b, #f97316); }
+.grad-rose    { background-image: linear-gradient(135deg, #f43f5e, #ec4899); }
+.grad-cyan    { background-image: linear-gradient(135deg, #06b6d4, #10b981); }
+.grad-orange  { background-image: linear-gradient(135deg, #f97316, #eab308); }
+.grad-lime    { background-image: linear-gradient(135deg, #84cc16, #10b981); }
+
+/* Gradient text */
+.grad-text-brand {
+  background-image: linear-gradient(100deg, #059669, #0d9488 45%, #ca8a04);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.grad-text-festive {
+  background-image: linear-gradient(100deg, #10b981, #8b5cf6 55%, #ec4899);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Animated gradient pan (marquee, CTA, festive strips) */
+@keyframes grad-pan {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.animate-grad-pan {
+  background-size: 220% 220%;
+  animation: grad-pan 14s ease infinite;
+}
+
+/* Hero mesh — soft multi-color blobs behind the landing hero */
+.hero-mesh {
+  background:
+    radial-gradient(42rem 22rem at 8% -10%, oklch(0.87 0.14 165 / 0.38), transparent 60%),
+    radial-gradient(36rem 20rem at 95% 0%, oklch(0.9 0.13 95 / 0.32), transparent 60%),
+    radial-gradient(30rem 20rem at 72% 100%, oklch(0.88 0.12 328 / 0.22), transparent 60%),
+    radial-gradient(26rem 18rem at 18% 110%, oklch(0.9 0.11 195 / 0.28), transparent 60%);
+}
+.dark .hero-mesh {
+  background:
+    radial-gradient(42rem 22rem at 8% -10%, oklch(0.5 0.12 165 / 0.30), transparent 60%),
+    radial-gradient(36rem 20rem at 95% 0%, oklch(0.5 0.11 85 / 0.26), transparent 60%),
+    radial-gradient(30rem 20rem at 72% 100%, oklch(0.45 0.10 328 / 0.22), transparent 60%),
+    radial-gradient(26rem 18rem at 18% 110%, oklch(0.48 0.10 195 / 0.24), transparent 60%);
+}
+
+/* Deep gradient surfaces (footer / admin sidebar) */
+.footer-deep {
+  background-image: linear-gradient(160deg, #04241c, #054236 55%, #033a30);
+}
+/* Footer copyright — admin-authored HTML line; links (e.g. the developer
+   credit) get a bright, hoverable look that matches the footer palette. */
+.footer-copyright a {
+  font-weight: 500;
+  color: rgb(255 255 255 / 0.78);
+  transition: color 150ms ease;
+}
+.footer-copyright a:hover {
+  color: #fcd34d; /* amber-300 */
+}
+.sidebar-deep {
+  background-image: linear-gradient(180deg, #0a1f1a, #11402f 60%, #0d2f33);
+}
+.sidebar-deep-violet {
+  background-image: linear-gradient(180deg, #1b1035, #2a1650 55%, #312058);
+}
+/* Admin navy rail — flat deep-navy sidebar (marked reference design).
+   Separate from .sidebar-deep so the admin login panel keeps its look. */
+.admin-navy {
+  background-color: #1d3858;
+}
+
+/* Card hover pop — colorful ring + lift */
+.pop-hover {
+  transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+}
+.pop-hover:hover {
+  border-color: oklch(0.72 0.13 163 / 0.55);
+  box-shadow: 0 12px 32px -12px oklch(0.6 0.15 163 / 0.35), 0 0 0 3px oklch(0.75 0.13 163 / 0.15);
+}
