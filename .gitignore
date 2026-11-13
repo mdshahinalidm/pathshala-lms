@@ -67,3 +67,7 @@ local-*
 test
 /skills/
 /.trash-*/
+
+# ── local agent/tooling artifacts (never publish) ──
+/agent-ctx/
+/tool-results/
