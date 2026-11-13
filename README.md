@@ -14,9 +14,12 @@ Courses · Video lessons · MCQ & written exams · Live classes · Certificates 
 ![Tailwind CSS 4](https://img.shields.io/badge/Tailwind_CSS-4-38bdf8?logo=tailwindcss)
 ![Prisma 6](https://img.shields.io/badge/Prisma-6-2D3748?logo=prisma)
 ![SQLite](https://img.shields.io/badge/SQLite-embedded-003B57?logo=sqlite)
-[![CI](https://img.shields.io/badge/CI-lint%20%2B%20build-brightgreen)](.github/workflows/ci.yml)
+[![CI](https://github.com/mdshahinalidm/pathshala-lms/actions/workflows/ci.yml/badge.svg)](https://github.com/mdshahinalidm/pathshala-lms/actions/workflows/ci.yml)
+![License](https://img.shields.io/badge/License-Proprietary-red)
 
 [Overview](#overview) · [Features](#features) · [Tech stack](#tech-stack) · [Getting started](#getting-started) · [Deployment](#deployment) · [Project structure](#project-structure)
+
+**55+ seeded courses** · **40+ REST endpoints** · **68-check SEO audit engine** · **20+ Prisma models** · **bKash + SSLCommerz payments** · **Bangla ⇄ English**
 
 </div>
 
@@ -43,9 +46,9 @@ Everything is fully **bilingual (Bangla ⇄ English)** with instant switching, *
   <img src="docs/screenshots/course-detail.png" alt="Course detail" width="49%" />
 </p>
 <p align="center">
-  <img src="docs/screenshots/admin.png" alt="Admin dashboard" width="49%" />
+  <img src="docs/screenshots/admin.png" alt="Admin analytics dashboard" width="49%" />
   &nbsp;
-  <img src="docs/screenshots/admin-settings.png" alt="Admin settings" width="49%" />
+  <img src="docs/screenshots/seo-center.png" alt="SEO Center — live 68-check audit" width="49%" />
 </p>
 <p align="center">
   <img src="docs/screenshots/mobile-home.png" alt="Mobile view" width="32%" />
