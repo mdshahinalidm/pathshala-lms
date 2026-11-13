@@ -171,6 +171,8 @@ bun run dev
 | `bun run db:push` | Push the Prisma schema to the database |
 | `bun run db:seed` | Seed demo users, 56 courses, exams, orders & reviews |
 | `bun run db:generate` | Regenerate the Prisma client |
+| `bun run db:switch:postgres` | Swap in the PostgreSQL schema (deploy/schema.postgres.prisma) for Vercel |
+| `bun run db:switch:sqlite` | Swap back to the SQLite schema for local development |
 
 ### Environment variables
 
@@ -184,10 +186,14 @@ bun run dev
 
 ## Deployment
 
-### Vercel / serverless
-1. Push the repo to GitHub and import it in Vercel — `prisma generate` runs automatically via `postinstall`.
-2. Set `DATABASE_URL`, `JWT_SECRET` and `NEXT_PUBLIC_SITE_URL`.
-3. The default SQLite file is read-only on serverless platforms — point `DATABASE_URL` at a hosted database ([Turso](https://turso.tech) is SQLite-compatible; Postgres works with a one-line `provider` change in `prisma/schema.prisma`), then run `db:push` + `db:seed` against it.
+### Vercel / serverless (PostgreSQL)
+
+Full step-by-step guide: **[deploy/VERCEL.md](./deploy/VERCEL.md)**
+
+1. Push the repo to GitHub, import it in Vercel and set `DATABASE_URL` (PostgreSQL), `JWT_SECRET` and `NEXT_PUBLIC_SITE_URL`.
+2. Create the hosted database and seed it: `bun run db:switch:postgres` → `db:push` + `db:seed` against the `postgresql://` connection string.
+3. Set the Vercel **Build Command** to `bun run db:switch:postgres && bun run build` — the PostgreSQL Prisma schema (`deploy/schema.postgres.prisma`) is swapped in automatically on every deploy.
+4. The committed repo still defaults to SQLite for frictionless local development; switch back anytime with `bun run db:switch:sqlite`.
 
 ### VPS / self-hosted
 ```bash
