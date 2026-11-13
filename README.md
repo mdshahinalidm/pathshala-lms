@@ -217,6 +217,12 @@ prisma/                  # Schema, demo seed (56 courses), extras
 docs/screenshots/        # App screenshots
 ```
 
+## License
+
+PathShala LMS is **proprietary software**. The source code in this repository is made visible for evaluation and due-diligence purposes only — copying, redistribution, modification, or commercial deployment is **not permitted** without a written commercial license from the author.
+
+See [LICENSE](./LICENSE) for the full terms. For licensing, contact via [LinkedIn](https://www.linkedin.com/in/mdshahinalidm/).
+
 ## Author
 
 **Md Shahin Ali** — [LinkedIn](https://www.linkedin.com/in/mdshahinalidm/)
